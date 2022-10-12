@@ -1,4 +1,5 @@
 import axios from "axios";
+import path from "path";
 
 const fs = require('fs');
 const { exec } = require('child_process');
@@ -128,7 +129,7 @@ const loadSwaggerAsync = (): Promise<SwaggerSchema> => {
 const loadStoreTemplateAsync = (): Promise<string> =>
   new Promise((resolve, reject) => {
     fs.readFile(
-      './templates/StoreTemplate.ts',
+      path.resolve(__dirname, '../templates/StoreTemplate.ts'),
       (err: any, data: any) => {
         if (err) reject(err);
         resolve(data.toString());
@@ -139,7 +140,7 @@ const loadStoreTemplateAsync = (): Promise<string> =>
 const loadModelTemplateAsync = (): Promise<string> =>
   new Promise((resolve, reject) => {
     fs.readFile(
-      './templates/ModelTemplate.ts',
+      path.resolve(__dirname, '../templates/ModelTemplate.ts'),
       (err: any, data: any) => {
         if (err) reject(err);
         resolve(data.toString());
@@ -150,7 +151,7 @@ const loadModelTemplateAsync = (): Promise<string> =>
 const loadEnumTemplateAsync = (): Promise<string> =>
   new Promise((resolve, reject) => {
     fs.readFile(
-      './templates/EnumTemplate.ts',
+      path.resolve(__dirname, '../templates/EnumTemplate.ts'),
       (err: any, data: any) => {
         if (err) reject(err);
         resolve(data.toString());

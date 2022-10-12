@@ -1,4 +1,5 @@
 import axios from "axios";
+import path from "path";
 
 const fs = require('fs');
 const { exec } = require('child_process');
@@ -122,7 +123,7 @@ const loadSwaggerAsync = (): Promise<SwaggerSchema> => {
 const loadStoreTemplateAsync = (): Promise<string> =>
   new Promise((resolve, reject) => {
     fs.readFile(
-      './templates/StoreTemplate.ts',
+      path.resolve(__dirname, '../templates/StoreTemplate.ts'),
       (err: any, data: any) => {
         if (err) reject(err);
         resolve(data.toString());
@@ -133,7 +134,7 @@ const loadStoreTemplateAsync = (): Promise<string> =>
 const loadModelTemplateAsync = (): Promise<string> =>
   new Promise((resolve, reject) => {
     fs.readFile(
-      './templates/ModelTemplate.ts',
+      path.resolve(__dirname, '../templates/ModelTemplate.ts'),
       (err: any, data: any) => {
         if (err) reject(err);
         resolve(data.toString());
@@ -187,7 +188,7 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
 
     if (definitions[interfaceName].type !== 'object') continue;
 
-    interfaceName = interfaceName.split('.')[1];
+    interfaceName = interfaceName.split('.')[0];
 
     let data = modelTemplate.toString();
 
@@ -208,7 +209,7 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
           let importName = getNameFromDefinitionString(
             properties[fieldNames[j]].items!.$ref!,
           );
-          importName = importName.split('.')[1];
+          importName = importName.split('.')[0];
 
           importFields.push(importName);
           newFields.push({ key: fieldNames[j], value: `${importName}[]` });
@@ -223,7 +224,7 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
         let importName = getNameFromDefinitionString(
           properties[fieldNames[j]].$ref!,
         );
-        importName = importName.split('.')[1];
+        importName = importName.split('.')[0];
 
         importFields.push(importName);
         newFields.push({ key: fieldNames[j], value: importName });
