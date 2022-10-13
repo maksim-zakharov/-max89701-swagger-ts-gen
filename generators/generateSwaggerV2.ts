@@ -1,5 +1,11 @@
-import axios from "axios";
-import path from "path";
+import {
+  capitalizeFirstLetter,
+  createEnumFileAsync, createInterfaceFileAsync,
+  loadEnumTemplateAsync,
+  loadModelTemplateAsync,
+  loadStoreTemplateAsync,
+  loadSwaggerAsync
+} from "./utils";
 
 const fs = require('fs');
 const { exec } = require('child_process');
@@ -26,12 +32,15 @@ interface DefinitionItem {
 interface Schema {
   $ref?: string;
   type?: string;
+  enum?: string[];
 }
 
 interface Property {
   type?: PropertyType;
+  description?: string;
   items?: Schema;
   $ref?: string;
+  enum?: string[];
 }
 
 enum PropertyType {
@@ -104,44 +113,6 @@ enum Description {
   Ok = 'OK',
 }
 
-const loadSwaggerAsync = (): Promise<SwaggerSchema> => {
-  const sourceParamIndex = process.argv.indexOf('-s') + 1;
-  const source = process.argv[sourceParamIndex];
-
-  if (source.includes('http')) {
-    return axios.get(source).then((res) => res.data);
-  } else {
-    return new Promise((resolve, reject) => {
-      fs.readFile(source, (err: any, data: any) => {
-        if (err) reject(err);
-        resolve(JSON.parse(data.toString()) as SwaggerSchema);
-      });
-    });
-  }
-};
-
-const loadStoreTemplateAsync = (): Promise<string> =>
-  new Promise((resolve, reject) => {
-    fs.readFile(
-      path.resolve(__dirname, '../templates/StoreTemplate.ts'),
-      (err: any, data: any) => {
-        if (err) reject(err);
-        resolve(data.toString());
-      },
-    );
-  });
-
-const loadModelTemplateAsync = (): Promise<string> =>
-  new Promise((resolve, reject) => {
-    fs.readFile(
-      path.resolve(__dirname, '../templates/ModelTemplate.ts'),
-      (err: any, data: any) => {
-        if (err) reject(err);
-        resolve(data.toString());
-      },
-    );
-  });
-
 const getNameFromDefinitionString = (definitionString: string) =>
   definitionString.replace(/\#\/definitions\//gm, '');
 
@@ -179,6 +150,7 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
   };
 
   const modelTemplate = await loadModelTemplateAsync();
+  const enumTemplate = await loadEnumTemplateAsync();
 
   const objectNames = Object.keys(definitions);
 
@@ -194,56 +166,94 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
 
     const fieldNames = Object.keys(properties);
     const newFields = [];
-    const importFields = new Set();
+    const importFields = new Set<string>();
     for (let j = 0; j < fieldNames.length; j++) {
+      const field = properties[fieldNames[j]];
       if (
-        properties[fieldNames[j]].type &&
-        (properties[fieldNames[j]].type as string) !== 'array'
+        field.type &&
+        (field.type as string) !== 'array'
       ) {
-        const type = properties[fieldNames[j]].type as string;
-        newFields.push({ key: fieldNames[j], value: swaggerTypeMap[type] });
-      } else if ((properties[fieldNames[j]].type as string) === 'array') {
-        if (properties[fieldNames[j]].items!.$ref) {
+        const type = field.type as string;
+        if (!field.enum) {
+          newFields.push({
+            key: fieldNames[j],
+            value: swaggerTypeMap[type],
+            description: field.description,
+          });
+        } else {
+          const enumName = interfaceName + capitalizeFirstLetter(fieldNames[j]);
+
+          importFields.add(enumName);
+          newFields.push({
+            key: fieldNames[j],
+            value: enumName,
+            description: field.description,
+          });
+
+          await createEnumFileAsync({
+            enumName,
+            enums: field.enum,
+            enumTemplate,
+            Fields,
+            outputPath,
+          });
+        }
+      } else if ((field.type as string) === 'array') {
+        if (field.items!.$ref) {
           let importName = getNameFromDefinitionString(
-            properties[fieldNames[j]].items!.$ref!,
+            field.items!.$ref!,
           );
 
           importFields.add(importName);
-          newFields.push({ key: fieldNames[j], value: `${importName}[]` });
+          newFields.push({ key: fieldNames[j], value: `${importName}[]`, description: field.description  });
         } else {
-          const type = properties[fieldNames[j]].items!.type as string;
-          newFields.push({
-            key: fieldNames[j],
-            value: `${swaggerTypeMap[type]}[]`,
-          });
+          const type = field.items!.type as string;
+          if (!field.items!.enum) {
+            newFields.push({
+              key: fieldNames[j],
+              value: swaggerTypeMap[type] + '[]',
+              description: field.description,
+            });
+          } else {
+            const enumName =
+              interfaceName + capitalizeFirstLetter(fieldNames[j]);
+
+            importFields.add(enumName);
+            newFields.push({
+              key: fieldNames[j],
+              value: enumName + '[]',
+              description: field.description,
+            });
+
+            await createEnumFileAsync({
+              enumName,
+              enums: field.items!.enum!,
+              enumTemplate,
+              Fields,
+              outputPath,
+            });
+          }
         }
-      } else if (properties[fieldNames[j]].$ref) {
+      } else if (field.$ref) {
         let importName = getNameFromDefinitionString(
-          properties[fieldNames[j]].$ref!,
+          field.$ref!,
         );
 
         importFields.add(importName);
-        newFields.push({ key: fieldNames[j], value: importName });
+        newFields.push({ key: fieldNames[j], value: importName,
+          description: field.description });
       }
     }
 
-    data = data.replace(
-      Imports,
-      Array.from(importFields)
-        .map((name) => `import { ${name} } from './${name}';`)
-        .join('\n'),
-    );
-
-    data = data.replace(
+    await createInterfaceFileAsync({
+      outputPath,
       Fields,
-      newFields.map(({ key, value }) => `${key}: ${value};`).join('\n'),
-    );
-
-    await new Promise((resolve) => {
-      fs.writeFile(`${outputPath}/${interfaceName}.ts`, data, (err: string) => {
-        if (err) return console.log(err);
-        resolve(null);
-      });
+      modelTemplate,
+      ModelTemplate,
+      Imports,
+      importFields,
+      newFields,
+      interfaceName,
     });
   }
 
@@ -259,7 +269,7 @@ const gen = async () => {
     return;
   }
 
-  const swagger = await loadSwaggerAsync();
+  const swagger = await loadSwaggerAsync<SwaggerSchema>();
 
   await generateModels(swagger.definitions, storeName);
 
