@@ -188,15 +188,13 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
 
     if (definitions[interfaceName].type !== 'object') continue;
 
-    interfaceName = interfaceName.split('.')[0];
-
     let data = modelTemplate.toString();
 
     data = data.replace(ModelTemplate, interfaceName);
 
     const fieldNames = Object.keys(properties);
     const newFields = [];
-    const importFields = [];
+    const importFields = new Set();
     for (let j = 0; j < fieldNames.length; j++) {
       if (
         properties[fieldNames[j]].type &&
@@ -209,9 +207,8 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
           let importName = getNameFromDefinitionString(
             properties[fieldNames[j]].items!.$ref!,
           );
-          importName = importName.split('.')[0];
 
-          importFields.push(importName);
+          importFields.add(importName);
           newFields.push({ key: fieldNames[j], value: `${importName}[]` });
         } else {
           const type = properties[fieldNames[j]].items!.type as string;
@@ -224,16 +221,15 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
         let importName = getNameFromDefinitionString(
           properties[fieldNames[j]].$ref!,
         );
-        importName = importName.split('.')[0];
 
-        importFields.push(importName);
+        importFields.add(importName);
         newFields.push({ key: fieldNames[j], value: importName });
       }
     }
 
     data = data.replace(
       Imports,
-      importFields
+      Array.from(importFields)
         .map((name) => `import { ${name} } from './${name}';`)
         .join('\n'),
     );

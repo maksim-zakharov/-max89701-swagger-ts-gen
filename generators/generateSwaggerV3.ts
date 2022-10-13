@@ -201,7 +201,7 @@ const createInterfaceFileAsync = async ({
   ModelTemplate: string;
   Fields: string;
   Imports: string;
-  importFields: string[];
+  importFields: Set<string>;
   newFields: {
     key: string;
     value: string;
@@ -216,7 +216,7 @@ const createInterfaceFileAsync = async ({
 
   data = data.replace(
     Imports,
-    importFields
+    Array.from(importFields)
       .map((name) => `import { ${name} } from './${name}';`)
       .join('\n'),
   );
@@ -310,7 +310,7 @@ const generateModels = async (definitions: Schemas) => {
 
     const fieldNames = Object.keys(properties);
     const newFields = [];
-    const importFields = [];
+    const importFields = new Set<string>();
     for (let j = 0; j < fieldNames.length; j++) {
       const field = properties[fieldNames[j]];
 
@@ -327,7 +327,7 @@ const generateModels = async (definitions: Schemas) => {
         } else {
           const enumName = interfaceName + capitalizeFirstLetter(fieldNames[j]);
 
-          importFields.push(enumName);
+          importFields.add(enumName);
           newFields.push({
             key: fieldNames[j],
             value: enumName,
@@ -349,7 +349,7 @@ const generateModels = async (definitions: Schemas) => {
           let importName = getNameFromDefinitionString(field.items!.$ref!);
           importName = importName.split('.')[0];
 
-          importFields.push(importName);
+          importFields.add(importName);
           newFields.push({
             key: fieldNames[j],
             value: `${importName}[]`,
@@ -370,7 +370,7 @@ const generateModels = async (definitions: Schemas) => {
             const enumName =
               interfaceName + capitalizeFirstLetter(fieldNames[j]);
 
-            importFields.push(enumName);
+            importFields.add(enumName);
             newFields.push({
               key: fieldNames[j],
               value: enumName + '[]',
@@ -392,7 +392,7 @@ const generateModels = async (definitions: Schemas) => {
         let importName = getNameFromDefinitionString(field.$ref!);
         importName = importName.split('.')[0];
 
-        importFields.push(importName);
+        importFields.add(importName);
         newFields.push({
           key: fieldNames[j],
           value: importName,
