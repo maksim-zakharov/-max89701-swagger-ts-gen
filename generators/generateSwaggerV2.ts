@@ -296,7 +296,7 @@ const gen = async () => {
   //
   // template = template.replace(HookDescription, methodSchema.description);
 
-  template = template.replace(endpointPath, paths[0]);
+  // template = template.replace(endpointPath, paths[0]);
 };
 
 module.exports = gen
