@@ -268,33 +268,33 @@ const gen = async () => {
 
   await generateModels(swagger.definitions, storeName);
 
-  const paths = Object.keys(swagger.paths);
-
-  const StoreName = 'StoreName';
-  const BaseUrl = 'BaseUrl';
-  const StoreDescription = 'StoreDescription';
-  const HookDescription = 'HookDescription';
-
-  const endpointName = 'endpointName';
-  const endpointPath = 'endpointPath';
-
-  let template = await loadStoreTemplateAsync();
-
-  const methods = Object.keys(swagger.paths[paths[0]]);
-  // @ts-ignore
-  const methodSchema: MethodSchema = swagger.paths[paths[0]][methods[0]];
-
-  template = template.replaceAll(StoreName, storeName.toLowerCase());
-
-  template = template.replace(BaseUrl, swagger.host + swagger.basePath);
-  template = template.replace(StoreDescription, swagger.info.description);
-
-  template = template.replace(
-    endpointName,
-    buildEndpointName(methods[0], methodSchema),
-  );
-
-  template = template.replace(HookDescription, methodSchema.description);
+  // const paths = Object.keys(swagger.paths);
+  //
+  // const StoreName = 'StoreName';
+  // const BaseUrl = 'BaseUrl';
+  // const StoreDescription = 'StoreDescription';
+  // const HookDescription = 'HookDescription';
+  //
+  // const endpointName = 'endpointName';
+  // const endpointPath = 'endpointPath';
+  //
+  // let template = await loadStoreTemplateAsync();
+  //
+  // const methods = Object.keys(swagger.paths[paths[0]]);
+  // // @ts-ignore
+  // const methodSchema: MethodSchema = swagger.paths[paths[0]][methods[0]];
+  //
+  // template = template.replaceAll(StoreName, storeName.toLowerCase());
+  //
+  // template = template.replace(BaseUrl, swagger.host + swagger.basePath);
+  // template = template.replace(StoreDescription, swagger.info.description);
+  //
+  // template = template.replace(
+  //   endpointName,
+  //   buildEndpointName(methods[0], methodSchema),
+  // );
+  //
+  // template = template.replace(HookDescription, methodSchema.description);
 
   template = template.replace(endpointPath, paths[0]);
 };
