@@ -1,5 +1,3 @@
-import axios from "axios";
-import path from "path";
 import {
   capitalizeFirstLetter,
   createEnumFileAsync, createInterfaceFileAsync,
@@ -8,8 +6,8 @@ import {
   loadStoreTemplateAsync,
   loadSwaggerAsync
 } from "./utils";
+import { Property, PropertyFormat, Schema } from "./models";
 
-const fs = require('fs');
 const { exec } = require('child_process');
 
 interface SwaggerSchema {
@@ -34,33 +32,6 @@ interface Dto {
   type: string;
   properties: { [key: string]: Property };
   required: string[];
-}
-
-interface Property {
-  type: Type;
-  $ref?: string;
-  description?: string;
-  nullable?: boolean;
-  minimum?: number;
-  items?: ItemsElement;
-  format?: Format;
-  enum?: string[];
-}
-
-enum Format {
-  DateTime = 'date-time',
-}
-
-interface ItemsElement {
-  $ref?: string;
-  type?: string;
-  enum?: string[];
-}
-
-enum Type {
-  Array = 'array',
-  Integer = 'integer',
-  String = 'string',
 }
 
 interface ExternalDocs {
@@ -106,7 +77,7 @@ interface Content {
 }
 
 interface ApplicationJSON {
-  schema: ItemsElement;
+  schema: Schema;
 }
 
 interface Response {
@@ -181,7 +152,7 @@ const generateModels = async (definitions: Schemas) => {
 
       if (field.type && (field.type as string) !== 'array') {
         const type = field.type as string;
-        const isDate = field.format === Format.DateTime;
+        const isDate = field.format === PropertyFormat.DateTime;
         if (!field.enum) {
           newFields.push({
             key: fieldNames[j],
@@ -221,7 +192,7 @@ const generateModels = async (definitions: Schemas) => {
           });
         } else {
           const type = field.items!.type as string;
-          const isDate = field.format === Format.DateTime;
+          const isDate = field.format === PropertyFormat.DateTime;
           if (!field.items!.enum) {
             newFields.push({
               key: fieldNames[j],

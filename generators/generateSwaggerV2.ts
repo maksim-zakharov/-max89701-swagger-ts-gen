@@ -6,6 +6,7 @@ import {
   loadStoreTemplateAsync,
   loadSwaggerAsync
 } from "./utils";
+import { Property, PropertyFormat, Schema } from "./models";
 
 const fs = require('fs');
 const { exec } = require('child_process');
@@ -27,27 +28,6 @@ interface Definitions {
 interface DefinitionItem {
   type: 'object';
   properties: { [key: string]: Property };
-}
-
-interface Schema {
-  $ref?: string;
-  type?: string;
-  enum?: string[];
-}
-
-interface Property {
-  type?: PropertyType;
-  description?: string;
-  items?: Schema;
-  $ref?: string;
-  enum?: string[];
-}
-
-enum PropertyType {
-  Boolean = 'boolean',
-  Integer = 'integer',
-  Number = 'number',
-  String = 'string',
 }
 
 interface Info {
@@ -174,11 +154,13 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
         (field.type as string) !== 'array'
       ) {
         const type = field.type as string;
+        const isDate = field.format === PropertyFormat.DateTime;
         if (!field.enum) {
           newFields.push({
             key: fieldNames[j],
-            value: swaggerTypeMap[type],
+            value: isDate ? 'Date' : swaggerTypeMap[type],
             description: field.description,
+            nullable: field.nullable,
           });
         } else {
           const enumName = interfaceName + capitalizeFirstLetter(fieldNames[j]);
@@ -188,6 +170,7 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
             key: fieldNames[j],
             value: enumName,
             description: field.description,
+            nullable: field.nullable,
           });
 
           await createEnumFileAsync({
@@ -205,14 +188,21 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
           );
 
           importFields.add(importName);
-          newFields.push({ key: fieldNames[j], value: `${importName}[]`, description: field.description  });
+          newFields.push({
+            key: fieldNames[j],
+            value: `${importName}[]`,
+            description: field.description,
+            nullable: field.nullable,
+          });
         } else {
           const type = field.items!.type as string;
+          const isDate = field.format === PropertyFormat.DateTime;
           if (!field.items!.enum) {
             newFields.push({
               key: fieldNames[j],
-              value: swaggerTypeMap[type] + '[]',
+              value: (isDate ? 'Date' : swaggerTypeMap[type]) + '[]',
               description: field.description,
+              nullable: field.nullable,
             });
           } else {
             const enumName =
@@ -223,6 +213,7 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
               key: fieldNames[j],
               value: enumName + '[]',
               description: field.description,
+              nullable: field.nullable,
             });
 
             await createEnumFileAsync({
@@ -240,8 +231,12 @@ const generateModels = async (definitions: Definitions, storeName: string) => {
         );
 
         importFields.add(importName);
-        newFields.push({ key: fieldNames[j], value: importName,
-          description: field.description });
+        newFields.push({
+          key: fieldNames[j],
+          value: importName,
+          description: field.description,
+          nullable: field.nullable,
+        });
       }
     }
 
